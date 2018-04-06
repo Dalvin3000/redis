@@ -31,11 +31,15 @@
  */
 
 #include <stdio.h>
+#ifndef _MSC_VER
 #include <sys/time.h>
+#endif
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
+#ifndef _MSC_VER
 #include <poll.h>
+#endif
 #include <string.h>
 #include <time.h>
 #include <errno.h>

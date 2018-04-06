@@ -30,18 +30,29 @@
 
 #include "fmacros.h"
 
+#include "platform.h"
+#include <unistd.h>
+
 #include <sys/types.h>
+#ifndef _MSC_VER
 #include <sys/socket.h>
+#endif
 #include <sys/stat.h>
+#ifndef _MSC_VER
 #include <sys/un.h>
 #include <sys/time.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
-#include <unistd.h>
+#else
+#include <sys/timeb.h>
+#pragma warning(disable: 4133 4244 4267)
+#endif
 #include <fcntl.h>
 #include <string.h>
+#ifndef _MSC_VER
 #include <netdb.h>
+#endif
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -59,6 +70,13 @@ static void anetSetError(char *err, const char *fmt, ...)
 }
 
 int anetSetBlock(char *err, int fd, int non_block) {
+#ifdef _MSC_VER
+    if(ioctlsocket(fd, FIONBIO, &non_block))
+    {
+        anetSetError(err, "ioctlsocket(FIONBIO): %s", strerror(WSAGetLastError()));
+        return ANET_ERR;
+    }
+#else
     int flags;
 
     /* Set the socket blocking (if non_block is zero) or non-blocking.
@@ -74,10 +92,11 @@ int anetSetBlock(char *err, int fd, int non_block) {
     else
         flags &= ~O_NONBLOCK;
 
-    if (fcntl(fd, F_SETFL, flags) == -1) {
+    if(fcntl(fd, F_SETFL, flags) == -1) {
         anetSetError(err, "fcntl(F_SETFL,O_NONBLOCK): %s", strerror(errno));
         return ANET_ERR;
     }
+#endif
     return ANET_OK;
 }
 
@@ -256,7 +275,7 @@ static int anetCreateSocket(char *err, int domain) {
     /* Make sure connection-intensive things like the redis benchmark
      * will be able to close/open sockets a zillion of times */
     if (anetSetReuseAddr(err,s) == ANET_ERR) {
-        close(s);
+        close_platform(s);
         return ANET_ERR;
     }
     return s;
@@ -315,7 +334,7 @@ static int anetTcpGenericConnect(char *err, char *addr, int port,
              * return an EINPROGRESS error here. */
             if (errno == EINPROGRESS && flags & ANET_CONNECT_NONBLOCK)
                 goto end;
-            close(s);
+            close_platform(s);
             s = ANET_ERR;
             continue;
         }
@@ -329,7 +348,7 @@ static int anetTcpGenericConnect(char *err, char *addr, int port,
 
 error:
     if (s != ANET_ERR) {
-        close(s);
+        close_platform(s);
         s = ANET_ERR;
     }
 
@@ -369,6 +388,7 @@ int anetTcpNonBlockBestEffortBindConnect(char *err, char *addr, int port,
             ANET_CONNECT_NONBLOCK|ANET_CONNECT_BE_BINDING);
 }
 
+#ifndef _MSC_VER
 int anetUnixGenericConnect(char *err, char *path, int flags)
 {
     int s;
@@ -381,7 +401,7 @@ int anetUnixGenericConnect(char *err, char *path, int flags)
     strncpy(sa.sun_path,path,sizeof(sa.sun_path)-1);
     if (flags & ANET_CONNECT_NONBLOCK) {
         if (anetNonBlock(err,s) != ANET_OK) {
-            close(s);
+            close_platform(s);
             return ANET_ERR;
         }
     }
@@ -391,7 +411,7 @@ int anetUnixGenericConnect(char *err, char *path, int flags)
             return s;
 
         anetSetError(err, "connect: %s", strerror(errno));
-        close(s);
+        close_platform(s);
         return ANET_ERR;
     }
     return s;
@@ -406,6 +426,7 @@ int anetUnixNonBlockConnect(char *err, char *path)
 {
     return anetUnixGenericConnect(err,path,ANET_CONNECT_NONBLOCK);
 }
+#endif
 
 /* Like read(2) but make sure 'count' is read before to return
  * (unless error or EOF condition is encountered) */
@@ -440,13 +461,13 @@ int anetWrite(int fd, char *buf, int count)
 static int anetListen(char *err, int s, struct sockaddr *sa, socklen_t len, int backlog) {
     if (bind(s,sa,len) == -1) {
         anetSetError(err, "bind: %s", strerror(errno));
-        close(s);
+        close_platform(s);
         return ANET_ERR;
     }
 
     if (listen(s, backlog) == -1) {
         anetSetError(err, "listen: %s", strerror(errno));
-        close(s);
+        close_platform(s);
         return ANET_ERR;
     }
     return ANET_OK;
@@ -456,7 +477,7 @@ static int anetV6Only(char *err, int s) {
     int yes = 1;
     if (setsockopt(s,IPPROTO_IPV6,IPV6_V6ONLY,&yes,sizeof(yes)) == -1) {
         anetSetError(err, "setsockopt: %s", strerror(errno));
-        close(s);
+        close_platform(s);
         return ANET_ERR;
     }
     return ANET_OK;
@@ -493,7 +514,7 @@ static int _anetTcpServer(char *err, int port, char *bindaddr, int af, int backl
     }
 
 error:
-    if (s != -1) close(s);
+    if (s != -1) close_platform(s);
     s = ANET_ERR;
 end:
     freeaddrinfo(servinfo);
@@ -510,6 +531,7 @@ int anetTcp6Server(char *err, int port, char *bindaddr, int backlog)
     return _anetTcpServer(err, port, bindaddr, AF_INET6, backlog);
 }
 
+#ifndef _MSC_VER
 int anetUnixServer(char *err, char *path, mode_t perm, int backlog)
 {
     int s;
@@ -527,6 +549,7 @@ int anetUnixServer(char *err, char *path, mode_t perm, int backlog)
         chmod(sa.sun_path, perm);
     return s;
 }
+#endif
 
 static int anetGenericAccept(char *err, int s, struct sockaddr *sa, socklen_t *len) {
     int fd;
@@ -656,3 +679,7 @@ int anetFormatSock(int fd, char *fmt, size_t fmt_len) {
     anetSockName(fd,ip,sizeof(ip),&port);
     return anetFormatAddr(fmt, fmt_len, ip, port);
 }
+
+#ifdef _MSC_VER
+#pragma warning(default: 4133 4244 4267)
+#endif

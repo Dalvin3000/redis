@@ -56,6 +56,10 @@
 #define HAVE_PROC_SOMAXCONN 1
 #endif
 
+#ifdef _MSC_VER
+#define HAVE_PROC_SOMAXCONN 1
+#endif
+
 /* Test for task_info() */
 #if defined(__APPLE__)
 #define HAVE_TASKINFO 1
@@ -72,7 +76,7 @@
 #endif
 
 /* Test for polling API */
-#ifdef __linux__
+#if defined(__linux__) || defined(_MSC_VER)
 #define HAVE_EPOLL 1
 #endif
 
@@ -194,9 +198,9 @@ void setproctitle(const char *fmt, ...);
 #error "Undefined or invalid BYTE_ORDER"
 #endif
 
-#if (__i386 || __amd64 || __powerpc__) && __GNUC__
+#if ((__i386 || __amd64 || __powerpc__) && __GNUC__) || defined(_MSC_VER)
 #define GNUC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
-#if defined(__clang__)
+#if defined(__clang__) || defined(_MSC_VER)
 #define HAVE_ATOMIC
 #endif
 #if (defined(__GLIBC__) && defined(__GLIBC_PREREQ))

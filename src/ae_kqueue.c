@@ -67,7 +67,7 @@ static int aeApiResize(aeEventLoop *eventLoop, int setsize) {
 static void aeApiFree(aeEventLoop *eventLoop) {
     aeApiState *state = eventLoop->apidata;
 
-    close(state->kqfd);
+    close_platform(state->kqfd);
     zfree(state->events);
     zfree(state);
 }

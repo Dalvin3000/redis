@@ -1749,8 +1749,8 @@ void backgroundSaveDoneHandlerSocket(int exitcode, int bysignal) {
         }
     }
 
-    close(server.rdb_pipe_read_result_from_child);
-    close(server.rdb_pipe_write_result_to_parent);
+    close_platform(server.rdb_pipe_read_result_from_child);
+    close_platform(server.rdb_pipe_write_result_to_parent);
 
     /* We can continue the replication process with all the slaves that
      * correctly received the full payload. Others are terminated. */
@@ -1950,8 +1950,8 @@ int rdbSaveToSlavesSockets(rdbSaveInfo *rsi) {
                     }
                 }
             }
-            close(pipefds[0]);
-            close(pipefds[1]);
+            close_platform(pipefds[0]);
+            close_platform(pipefds[1]);
             closeChildInfoPipe();
         } else {
             server.stat_fork_time = ustime()-start;

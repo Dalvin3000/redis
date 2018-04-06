@@ -50,8 +50,8 @@ void closeChildInfoPipe(void) {
     if (server.child_info_pipe[0] != -1 ||
         server.child_info_pipe[1] != -1)
     {
-        close(server.child_info_pipe[0]);
-        close(server.child_info_pipe[1]);
+        close_platform(server.child_info_pipe[0]);
+        close_platform(server.child_info_pipe[1]);
         server.child_info_pipe[0] = -1;
         server.child_info_pipe[1] = -1;
     }

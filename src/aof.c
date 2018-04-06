@@ -209,7 +209,7 @@ void stopAppendOnly(void) {
     serverAssert(server.aof_state != AOF_OFF);
     flushAppendOnlyFile(1);
     aof_fsync(server.aof_fd);
-    close(server.aof_fd);
+    close_platform(server.aof_fd);
 
     server.aof_fd = -1;
     server.aof_selected_db = -1;
@@ -256,7 +256,7 @@ int startAppendOnly(void) {
         server.aof_rewrite_scheduled = 1;
         serverLog(LL_WARNING,"AOF was enabled but there is already a child process saving an RDB file on disk. An AOF background was scheduled to start when possible.");
     } else if (rewriteAppendOnlyFileBackground() == C_ERR) {
-        close(server.aof_fd);
+        close_platform(server.aof_fd);
         serverLog(LL_WARNING,"Redis needs to enable the AOF but can't trigger a background AOF rewrite operation. Check the above logs for more info about the error.");
         return C_ERR;
     }
@@ -1303,19 +1303,19 @@ int aofCreatePipes(void) {
 error:
     serverLog(LL_WARNING,"Error opening /setting AOF rewrite IPC pipes: %s",
         strerror(errno));
-    for (j = 0; j < 6; j++) if(fds[j] != -1) close(fds[j]);
+    for (j = 0; j < 6; j++) if(fds[j] != -1) close_platform(fds[j]);
     return C_ERR;
 }
 
 void aofClosePipes(void) {
     aeDeleteFileEvent(server.el,server.aof_pipe_read_ack_from_child,AE_READABLE);
     aeDeleteFileEvent(server.el,server.aof_pipe_write_data_to_child,AE_WRITABLE);
-    close(server.aof_pipe_write_data_to_child);
-    close(server.aof_pipe_read_data_from_parent);
-    close(server.aof_pipe_write_ack_to_parent);
-    close(server.aof_pipe_read_ack_from_child);
-    close(server.aof_pipe_write_ack_to_child);
-    close(server.aof_pipe_read_ack_from_parent);
+    close_platform(server.aof_pipe_write_data_to_child);
+    close_platform(server.aof_pipe_read_data_from_parent);
+    close_platform(server.aof_pipe_write_ack_to_parent);
+    close_platform(server.aof_pipe_read_ack_from_child);
+    close_platform(server.aof_pipe_write_ack_to_child);
+    close_platform(server.aof_pipe_read_ack_from_parent);
 }
 
 /* ----------------------------------------------------------------------------
@@ -1460,7 +1460,7 @@ void backgroundRewriteDoneHandler(int exitcode, int bysignal) {
         if (aofRewriteBufferWrite(newfd) == -1) {
             serverLog(LL_WARNING,
                 "Error trying to flush the parent diff to the rewritten AOF: %s", strerror(errno));
-            close(newfd);
+            close_platform(newfd);
             goto cleanup;
         }
         latencyEndMonitor(latency);
@@ -1471,7 +1471,7 @@ void backgroundRewriteDoneHandler(int exitcode, int bysignal) {
 
         /* The only remaining thing to do is to rename the temporary file to
          * the configured file and switch the file descriptor used to do AOF
-         * writes. We don't want close(2) or rename(2) calls to block the
+         * writes. We don't want close_platform(2) or rename(2) calls to block the
          * server on old file deletion.
          *
          * There are two possible scenarios:
@@ -1488,11 +1488,11 @@ void backgroundRewriteDoneHandler(int exitcode, int bysignal) {
          * server.
          *
          * To mitigate the blocking effect of the unlink operation (either
-         * caused by rename(2) in scenario 1, or by close(2) in scenario 2), we
+         * caused by rename(2) in scenario 1, or by close_platform(2) in scenario 2), we
          * use a background thread to take care of this. First, we
          * make scenario 1 identical to scenario 2 by opening the target file
          * when it exists. The unlink operation after the rename(2) will then
-         * be executed upon calling close(2) for its descriptor. Everything to
+         * be executed upon calling close_platform(2) for its descriptor. Everything to
          * guarantee atomicity for this switch has already happened by then, so
          * we don't care what the outcome or duration of that close operation
          * is, as long as the file descriptor is released again. */
@@ -1517,8 +1517,8 @@ void backgroundRewriteDoneHandler(int exitcode, int bysignal) {
                 tmpfile,
                 server.aof_filename,
                 strerror(errno));
-            close(newfd);
-            if (oldfd != -1) close(oldfd);
+            close_platform(newfd);
+            if (oldfd != -1) close_platform(oldfd);
             goto cleanup;
         }
         latencyEndMonitor(latency);
@@ -1527,7 +1527,7 @@ void backgroundRewriteDoneHandler(int exitcode, int bysignal) {
         if (server.aof_fd == -1) {
             /* AOF disabled, we don't need to set the AOF file descriptor
              * to this new file, so we can close it. */
-            close(newfd);
+            close_platform(newfd);
         } else {
             /* AOF enabled, replace the old fd with the new one. */
             oldfd = server.aof_fd;

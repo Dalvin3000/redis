@@ -847,7 +847,7 @@ int openDirectLogFiledes(void) {
 /* Used to close what closeDirectLogFiledes() returns. */
 void closeDirectLogFiledes(int fd) {
     int log_to_stdout = server.logfile[0] == '\0';
-    if (!log_to_stdout) close(fd);
+    if (!log_to_stdout) close_platform(fd);
 }
 
 /* Logs the stack trace using the backtrace() call. This function is designed

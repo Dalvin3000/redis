@@ -340,12 +340,12 @@ int clusterSaveConfig(int do_fsync) {
     if (content_size != sdslen(ci) && ftruncate(fd,content_size) == -1) {
         /* ftruncate() failing is not a critical error. */
     }
-    close(fd);
+    close_platform(fd);
     sdsfree(ci);
     return 0;
 
 err:
-    if (fd != -1) close(fd);
+    if (fd != -1) close_platform(fd);
     sdsfree(ci);
     return -1;
 }
@@ -394,7 +394,7 @@ int clusterLockConfig(char *filename) {
             serverLog(LL_WARNING,
                 "Impossible to lock %s: %s", filename, strerror(errno));
         }
-        close(fd);
+        close_platform(fd);
         return C_ERR;
     }
     /* Lock acquired: leak the 'fd' by not closing it, so that we'll retain the
@@ -585,7 +585,7 @@ void freeClusterLink(clusterLink *link) {
     sdsfree(link->rcvbuf);
     if (link->node)
         link->node->link = NULL;
-    close(link->fd);
+    close_platform(link->fd);
     zfree(link);
 }
 
@@ -4794,7 +4794,7 @@ migrateCachedSocket* migrateGetSocket(client *c, robj *host, robj *port, long ti
         /* Too many items, drop one at random. */
         dictEntry *de = dictGetRandomKey(server.migrate_cached_sockets);
         cs = dictGetVal(de);
-        close(cs->fd);
+        close_platform(cs->fd);
         zfree(cs);
         dictDelete(server.migrate_cached_sockets,dictGetKey(de));
     }
@@ -4815,7 +4815,7 @@ migrateCachedSocket* migrateGetSocket(client *c, robj *host, robj *port, long ti
         sdsfree(name);
         addReplySds(c,
             sdsnew("-IOERR error or timeout connecting to the client\r\n"));
-        close(fd);
+        close_platform(fd);
         return NULL;
     }
 
@@ -4842,7 +4842,7 @@ void migrateCloseSocket(robj *host, robj *port) {
         return;
     }
 
-    close(cs->fd);
+    close_platform(cs->fd);
     zfree(cs);
     dictDelete(server.migrate_cached_sockets,name);
     sdsfree(name);
@@ -4856,7 +4856,7 @@ void migrateCloseTimedoutSockets(void) {
         migrateCachedSocket *cs = dictGetVal(de);
 
         if ((server.unixtime - cs->last_use_time) > MIGRATE_SOCKET_CACHE_TTL) {
-            close(cs->fd);
+            close_platform(cs->fd);
             zfree(cs);
             dictDelete(server.migrate_cached_sockets,dictGetKey(de));
         }

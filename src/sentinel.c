@@ -1854,11 +1854,11 @@ void sentinelFlushConfig(void) {
     if (rewrite_status == -1) goto werr;
     if ((fd = open(server.configfile,O_RDONLY)) == -1) goto werr;
     if (fsync(fd) == -1) goto werr;
-    if (close(fd) == EOF) goto werr;
+    if (close_platform(fd) == EOF) goto werr;
     return;
 
 werr:
-    if (fd != -1) close(fd);
+    if (fd != -1) close_platform(fd);
     serverLog(LL_WARNING,"WARNING: Sentinel was not able to save the new configuration on disk!!!: %s", strerror(errno));
 }
 

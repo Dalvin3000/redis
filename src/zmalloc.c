@@ -246,10 +246,10 @@ size_t zmalloc_get_rss(void) {
     snprintf(filename,256,"/proc/%d/stat",getpid());
     if ((fd = open(filename,O_RDONLY)) == -1) return 0;
     if (read(fd,buf,4096) <= 0) {
-        close(fd);
+        close_platform(fd);
         return 0;
     }
-    close(fd);
+    close_platform(fd);
 
     p = buf;
     count = 23; /* RSS is the 24th field in /proc/<pid>/stat */

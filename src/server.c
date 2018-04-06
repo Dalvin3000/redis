@@ -36,25 +36,37 @@
 
 #include <time.h>
 #include <signal.h>
+#ifndef _MSC_VER
 #include <sys/wait.h>
+#else
+#include <unistd.h>
+#endif
 #include <errno.h>
 #include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
+#ifndef _MSC_VER
 #include <arpa/inet.h>
+#endif
 #include <sys/stat.h>
 #include <fcntl.h>
+#ifndef _MSC_VER
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/uio.h>
 #include <sys/un.h>
+#endif
 #include <limits.h>
 #include <float.h>
 #include <math.h>
+#ifndef _MSC_VER
 #include <sys/resource.h>
 #include <sys/utsname.h>
+#endif
 #include <locale.h>
+#ifndef _MSC_VER
 #include <sys/socket.h>
+#endif
 
 /* Our shared "common" objects */
 
@@ -393,7 +405,7 @@ void serverLogFromHandler(int level, const char *msg) {
     if (write(fd,msg,strlen(msg)) == -1) goto err;
     if (write(fd,"\n",1) == -1) goto err;
 err:
-    if (!log_to_stdout) close(fd);
+    if (!log_to_stdout) close_platform(fd);
 }
 
 /* Return the UNIX time in microseconds */
@@ -1557,8 +1569,8 @@ int restartServer(int flags, mstime_t delay) {
      * which are useful if we restart a Redis server which is not daemonized. */
     for (j = 3; j < (int)server.maxclients + 1024; j++) {
         /* Test the descriptor validity before closing it, otherwise
-         * Valgrind issues a warning on close(). */
-        if (fcntl(j,F_GETFD) != -1) close(j);
+         * Valgrind issues a warning on close_platform(). */
+        if (fcntl(j,F_GETFD) != -1) close_platform(j);
     }
 
     /* Execute the server with the original command line. */
@@ -1826,7 +1838,8 @@ void initServer(void) {
         exit(1);
 
     /* Open the listening Unix domain socket. */
-    if (server.unixsocket != NULL) {
+#ifndef _MSC_VER
+    if(server.unixsocket != NULL) {
         unlink(server.unixsocket); /* don't care if this fails */
         server.sofd = anetUnixServer(server.neterr,server.unixsocket,
             server.unixsocketperm, server.tcp_backlog);
@@ -1836,6 +1849,7 @@ void initServer(void) {
         }
         anetNonBlock(NULL,server.sofd);
     }
+#endif
 
     /* Abort if there are no listening sockets at all. */
     if (server.ipfd_count == 0 && server.sofd < 0) {
@@ -1987,15 +2001,18 @@ void populateCommandTable(void) {
 }
 
 void resetCommandTableStats(void) {
-    int numcommands = sizeof(redisCommandTable)/sizeof(struct redisCommand);
-    int j;
+    struct redisCommand *c;
+    dictEntry *de;
+    dictIterator *di;
 
-    for (j = 0; j < numcommands; j++) {
-        struct redisCommand *c = redisCommandTable+j;
-
+    di = dictGetSafeIterator(server.commands);
+    while((de = dictNext(di)) != NULL) {
+        c = (struct redisCommand *) dictGetVal(de);
         c->microseconds = 0;
         c->calls = 0;
     }
+    dictReleaseIterator(di);
+
 }
 
 /* ========================== Redis OP Array API ============================ */
@@ -2491,10 +2508,10 @@ int processCommand(client *c) {
 void closeListeningSockets(int unlink_unix_socket) {
     int j;
 
-    for (j = 0; j < server.ipfd_count; j++) close(server.ipfd[j]);
-    if (server.sofd != -1) close(server.sofd);
+    for (j = 0; j < server.ipfd_count; j++) close_platform(server.ipfd[j]);
+    if (server.sofd != -1) close_platform(server.sofd);
     if (server.cluster_enabled)
-        for (j = 0; j < server.cfd_count; j++) close(server.cfd[j]);
+        for (j = 0; j < server.cfd_count; j++) close_platform(server.cfd[j]);
     if (unlink_unix_socket && server.unixsocket) {
         serverLog(LL_NOTICE,"Removing the unix socket file.");
         unlink(server.unixsocket); /* don't care if this fails */
@@ -2794,7 +2811,7 @@ void bytesToHuman(char *s, unsigned long long n) {
 sds genRedisInfoString(char *section) {
     sds info = sdsempty();
     time_t uptime = server.unixtime-server.stat_starttime;
-    int j, numcommands;
+    int j;
     struct rusage self_ru, c_ru;
     unsigned long lol, bib;
     int allsections = 0, defsections = 0;
@@ -3255,20 +3272,24 @@ sds genRedisInfoString(char *section) {
         (float)c_ru.ru_utime.tv_sec+(float)c_ru.ru_utime.tv_usec/1000000);
     }
 
-    /* cmdtime */
+    /* Command statistics */
     if (allsections || !strcasecmp(section,"commandstats")) {
         if (sections++) info = sdscat(info,"\r\n");
         info = sdscatprintf(info, "# Commandstats\r\n");
-        numcommands = sizeof(redisCommandTable)/sizeof(struct redisCommand);
-        for (j = 0; j < numcommands; j++) {
-            struct redisCommand *c = redisCommandTable+j;
 
+        struct redisCommand *c;
+        dictEntry *de;
+        dictIterator *di;
+        di = dictGetSafeIterator(server.commands);
+        while((de = dictNext(di)) != NULL) {
+            c = (struct redisCommand *) dictGetVal(de);
             if (!c->calls) continue;
             info = sdscatprintf(info,
                 "cmdstat_%s:calls=%lld,usec=%lld,usec_per_call=%.2f\r\n",
                 c->name, c->calls, c->microseconds,
                 (c->calls == 0) ? 0 : ((float)c->microseconds/c->calls));
         }
+        dictReleaseIterator(di);
     }
 
     /* Cluster */
@@ -3371,7 +3392,7 @@ void daemonize(void) {
         dup2(fd, STDIN_FILENO);
         dup2(fd, STDOUT_FILENO);
         dup2(fd, STDERR_FILENO);
-        if (fd > STDERR_FILENO) close(fd);
+        if (fd > STDERR_FILENO) close_platform(fd);
     }
 }
 
@@ -3624,10 +3645,10 @@ int redisSupervisedSystemd(void) {
 #endif
     if (sendmsg(fd, &hdr, sendto_flags) < 0) {
         serverLog(LL_WARNING, "Can't send notification to systemd");
-        close(fd);
+        close_platform(fd);
         return 0;
     }
-    close(fd);
+    close_platform(fd);
     return 1;
 }
 
@@ -3650,10 +3671,18 @@ int redisIsSupervised(int mode) {
     return 0;
 }
 
+#ifdef _MSC_VER
+#   include <TimeAPI.h>
+#endif
+
 
 int main(int argc, char **argv) {
     struct timeval tv;
     int j;
+
+#ifdef _MSC_VER
+    timeBeginPeriod(1);
+#endif
 
 #ifdef REDIS_TEST
     if (argc == 3 && !strcasecmp(argv[1], "test")) {
@@ -3843,6 +3872,11 @@ int main(int argc, char **argv) {
     aeSetAfterSleepProc(server.el,afterSleep);
     aeMain(server.el);
     aeDeleteEventLoop(server.el);
+
+#ifdef _MSC_VER
+    timeEndPeriod(1);
+#endif
+
     return 0;
 }
 

@@ -915,7 +915,7 @@ void sendBulkToSlave(aeEventLoop *el, int fd, void *privdata, int mask) {
     slave->repldboff += nwritten;
     server.stat_net_output_bytes += nwritten;
     if (slave->repldboff == slave->repldbsize) {
-        close(slave->repldbfd);
+        close_platform(slave->repldbfd);
         slave->repldbfd = -1;
         aeDeleteFileEvent(server.el,slave->fd,AE_WRITABLE);
         putSlaveOnline(slave);
@@ -1274,7 +1274,7 @@ void readSyncBulkPayload(aeEventLoop *el, int fd, void *privdata, int mask) {
         }
         /* Final setup of the connected slave <- master link */
         zfree(server.repl_transfer_tmpfile);
-        close(server.repl_transfer_fd);
+        close_platform(server.repl_transfer_fd);
         replicationCreateMasterClient(server.repl_transfer_s,rsi.repl_stream_db);
         server.repl_state = REPL_STATE_CONNECTED;
         /* After a full resynchroniziation we use the replication ID and
@@ -1579,7 +1579,7 @@ void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask) {
     /* If this event fired after the user turned the instance into a master
      * with SLAVEOF NO ONE we must just return ASAP. */
     if (server.repl_state == REPL_STATE_NONE) {
-        close(fd);
+        close_platform(fd);
         return;
     }
 
@@ -1833,8 +1833,8 @@ void syncWithMaster(aeEventLoop *el, int fd, void *privdata, int mask) {
 
 error:
     aeDeleteFileEvent(server.el,fd,AE_READABLE|AE_WRITABLE);
-    if (dfd != -1) close(dfd);
-    close(fd);
+    if (dfd != -1) close_platform(dfd);
+    close_platform(fd);
     server.repl_transfer_s = -1;
     server.repl_state = REPL_STATE_CONNECT;
     return;
@@ -1859,7 +1859,7 @@ int connectWithMaster(void) {
     if (aeCreateFileEvent(server.el,fd,AE_READABLE|AE_WRITABLE,syncWithMaster,NULL) ==
             AE_ERR)
     {
-        close(fd);
+        close_platform(fd);
         serverLog(LL_WARNING,"Can't create readable event for SYNC");
         return C_ERR;
     }
@@ -1878,7 +1878,7 @@ void undoConnectWithMaster(void) {
     int fd = server.repl_transfer_s;
 
     aeDeleteFileEvent(server.el,fd,AE_READABLE|AE_WRITABLE);
-    close(fd);
+    close_platform(fd);
     server.repl_transfer_s = -1;
 }
 
@@ -1888,7 +1888,7 @@ void undoConnectWithMaster(void) {
 void replicationAbortSyncTransfer(void) {
     serverAssert(server.repl_state == REPL_STATE_TRANSFER);
     undoConnectWithMaster();
-    close(server.repl_transfer_fd);
+    close_platform(server.repl_transfer_fd);
     unlink(server.repl_transfer_tmpfile);
     zfree(server.repl_transfer_tmpfile);
 }

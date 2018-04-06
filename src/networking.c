@@ -82,7 +82,7 @@ client *createClient(int fd) {
         if (aeCreateFileEvent(server.el,fd,AE_READABLE,
             readQueryFromClient, c) == AE_ERR)
         {
-            close(fd);
+            close_platform(fd);
             zfree(c);
             return NULL;
         }
@@ -608,7 +608,7 @@ static void acceptCommonHandler(int fd, int flags, char *ip) {
         serverLog(LL_WARNING,
             "Error registering fd event for the new client: %s (fd=%d)",
             strerror(errno),fd);
-        close(fd); /* May be already closed, just ignore errors */
+        close_platform(fd); /* May be already closed, just ignore errors */
         return;
     }
     /* If maxclient directive is set and this is one client more... close the
@@ -750,7 +750,7 @@ void unlinkClient(client *c) {
         /* Unregister async I/O handlers and close the socket. */
         aeDeleteFileEvent(server.el,c->fd,AE_READABLE);
         aeDeleteFileEvent(server.el,c->fd,AE_WRITABLE);
-        close(c->fd);
+        close_platform(c->fd);
         c->fd = -1;
     }
 
@@ -830,7 +830,7 @@ void freeClient(client *c) {
      * we lost the connection with a slave. */
     if (c->flags & CLIENT_SLAVE) {
         if (c->replstate == SLAVE_STATE_SEND_BULK) {
-            if (c->repldbfd != -1) close(c->repldbfd);
+            if (c->repldbfd != -1) close_platform(c->repldbfd);
             if (c->replpreamble) sdsfree(c->replpreamble);
         }
         list *l = (c->flags & CLIENT_MONITOR) ? server.monitors : server.slaves;

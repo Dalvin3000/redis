@@ -45,7 +45,9 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <syslog.h>
+#ifndef _MSC_VER
 #include <netinet/in.h>
+#endif
 #include <lua.h>
 #include <signal.h>
 
