@@ -13,7 +13,7 @@
 #	include <ws2tcpip.h>
 
 #	if defined(__MINGW32__)
-#		error you can't build it on mingw mostly. wait for win32api for mingw released. http://sourceforge.net/p/mingw/bugs/1087/ http://sourceforge.net/p/mingw/bugs/1662/
+#		error you cant build it on mingw mostly. wait for win32api for mingw released. http://sourceforge.net/p/mingw/bugs/1087/ http://sourceforge.net/p/mingw/bugs/1662/
 #	else
 #		include <mstcpip.h>
 #	endif
@@ -59,8 +59,8 @@
 #   	define 	TCP_QUICKACK   12
 #   endif
 
-    inline int poll(struct pollfd* s, unsigned int count, int timeout)  { return (int)WSAPoll((struct pollfd*)s, count, timeout); };
-    inline int close_platform(SOCKET s)                                 { return (int)closesocket(s); };
+    inline int poll(struct pollfd* s, unsigned int count, int timeout)  { return (int)WSAPoll((struct pollfd*)s, count, timeout); }
+    inline int close_platform(SOCKET s)                                 { return (int)closesocket(s); }
 
     inline int wsaToErrno(int errcode)
     {
@@ -92,7 +92,7 @@
         default:
             return errcode;
         };
-    };
+    }
 
     typedef int mode_t;
     typedef int siginfo_t;
@@ -108,10 +108,11 @@
 
 #else // LINUX
 
+#   include <unistd.h>
 
 #   define PACK __attribute__ ((__packed__))
 
-inline int close_platform(int s) { return close_platform(s); };
+    inline int close_platform(int s) { return close(s); }
 
 
 #endif
