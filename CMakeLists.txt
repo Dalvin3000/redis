@@ -1,6 +1,10 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.9.0)
 PROJECT(redis)
 
+ADD_SUBDIRECTORY(deps/hiredis hiredis)
+ADD_SUBDIRECTORY(deps/lua lua)
+ADD_SUBDIRECTORY(deps/jemalloc jemalloc)
+
 
 SET(SERVER_SOURCES
     src/adlist.c
@@ -68,12 +72,15 @@ SET(SERVER_SOURCES
     src/defrag.c
     src/siphash.c
     src/rax.c
-
-    src/platform/getopt.c
 )
 
+IF(MSVC)
+    SET(SERVER_SOURCES ${SERVER_SOURCES}
+        src/platform/getopt.c
+    )
+ENDIF()
+
 FIND_PACKAGE(Threads REQUIRED)
-FIND_PACKAGE(Lua51 REQUIRED)
 
 
 ADD_EXECUTABLE(redis-server ${SERVER_SOURCES})
@@ -100,22 +107,38 @@ IF(MSVC)
     SET_PROPERTY(TARGET Threads::Threads PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${PTHREAD_INCLUDES}")
 
     TARGET_LINK_LIBRARIES(redis-server
-        PRIVATE winmm
-        PRIVATE pthread
-        PRIVATE ${LUA_LIBRARIES}
-    )
-    TARGET_INCLUDE_DIRECTORIES(redis-server
-        PRIVATE ./src/platform/
-        PRIVATE "${LUA_INCLUDE_DIR}"
+        PRIVATE
+            winmm
+            pthread
+            ${LUA_LIBRARIES}
     )
     TARGET_COMPILE_DEFINITIONS(redis-server
-        PRIVATE -DBYTE_ORDER=LITTLE_ENDIAN
-        PRIVATE /std:c++98
+        PRIVATE
+            /std:c++98
     )
 ENDIF()
 
 
 
-TARGET_LINK_LIBRARIES(redis-server
-    PRIVATE Threads::Threads
+TARGET_COMPILE_OPTIONS(redis-server
+    PRIVATE
+        -std=c99 -pedantic
+        -Wall -W -Wno-missing-field-initializers
+        -rdynamic
 )
+TARGET_COMPILE_DEFINITIONS(redis-server
+    PRIVATE
+        -DBYTE_ORDER=LITTLE_ENDIAN
+        -DUSE_JEMALLOC
+)
+TARGET_INCLUDE_DIRECTORIES(redis-server
+    PRIVATE "${LUA_INCLUDE_DIR}"
+)
+TARGET_LINK_LIBRARIES(redis-server
+    PRIVATE
+        Threads::Threads
+        hiredis
+        lua
+        jemalloc
+)
+

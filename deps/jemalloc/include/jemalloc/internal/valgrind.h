@@ -1,6 +1,10 @@
 /******************************************************************************/
 #ifdef JEMALLOC_H_TYPES
 
+#if defined(CMAKE_JEMALLOC) && defined(JEMALLOC_VALGRIND)
+#	undef JEMALLOC_VALGRIND
+#endif
+
 #ifdef JEMALLOC_VALGRIND
 #include <valgrind/valgrind.h>
 

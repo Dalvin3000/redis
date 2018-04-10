@@ -29,7 +29,7 @@
  */
 
 #include "server.h"
-#include "hiredis.h"
+#include <hiredis.h>
 #include "async.h"
 
 #include <ctype.h>

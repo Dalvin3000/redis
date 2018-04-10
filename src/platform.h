@@ -112,7 +112,7 @@
 
 #   define PACK __attribute__ ((__packed__))
 
-    inline int close_platform(int s) { return close(s); }
+    inline __attribute__((always_inline)) int close_platform(int s) { return close(s); }
 
 
 #endif

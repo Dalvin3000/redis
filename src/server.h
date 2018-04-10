@@ -30,6 +30,8 @@
 #ifndef __REDIS_H
 #define __REDIS_H
 
+#include "platform.h"
+
 #include "fmacros.h"
 #include "config.h"
 #include "solarisfixes.h"
