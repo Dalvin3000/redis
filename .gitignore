@@ -30,3 +30,5 @@ deps/lua/src/liblua.a
 Makefile.dep
 
 \.vscode/
+
+build-nix/
