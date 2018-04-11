@@ -5,7 +5,6 @@ ADD_SUBDIRECTORY(deps/hiredis hiredis)
 ADD_SUBDIRECTORY(deps/lua lua)
 ADD_SUBDIRECTORY(deps/jemalloc jemalloc)
 
-
 SET(SERVER_SOURCES
     src/adlist.c
     src/quicklist.c
@@ -74,6 +73,16 @@ SET(SERVER_SOURCES
     src/rax.c
 )
 
+IF(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/release.h")
+    MESSAGE(STATUS "Executing ${CMAKE_CURRENT_SOURCE_DIR}/src/mkreleasehdr.sh")
+    EXECUTE_PROCESS(
+        COMMAND sh -c "./mkreleasehdr.sh"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        ERROR_VARIABLE ERROR
+        RESULT_VARIABLE RESULT
+    )
+ENDIF()
+
 IF(MSVC)
     SET(SERVER_SOURCES ${SERVER_SOURCES}
         src/platform/getopt.c
@@ -82,10 +91,7 @@ ENDIF()
 
 FIND_PACKAGE(Threads REQUIRED)
 
-
 ADD_EXECUTABLE(redis-server ${SERVER_SOURCES})
-
-
 
 IF(MSVC)
     FIND_LIBRARY(PTHREAD_LIB
@@ -117,8 +123,6 @@ IF(MSVC)
             /std:c++98
     )
 ENDIF()
-
-
 
 TARGET_COMPILE_OPTIONS(redis-server
     PRIVATE
