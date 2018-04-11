@@ -1,5 +1,17 @@
 This README is just a fast *quick start* document. You can find more detailed documentation at http://redis.io.
 
+What is this branch?
+--------------
+
+This repo branch is a port of redis to windows platform, x86_64. To build this version you need a cygwin subsystem which can be obtained here https://www.cygwin.com/. Also you need a cmake build system, https://cmake.org. Recomended to build it from source for linux platform.
+
+To build solution run next commands in ./ of project
+
+    mkdir build && cd build
+    cmake -G "Unix Makefiles" ..
+    make
+
+
 What is Redis?
 --------------
 
