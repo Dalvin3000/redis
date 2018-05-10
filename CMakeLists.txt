@@ -4,73 +4,84 @@ PROJECT(redis)
 ADD_SUBDIRECTORY(deps/hiredis hiredis)
 ADD_SUBDIRECTORY(deps/lua lua)
 ADD_SUBDIRECTORY(deps/jemalloc jemalloc)
+ADD_SUBDIRECTORY(deps/linenoise linenoise)
 
 SET(SERVER_SOURCES
     src/adlist.c
-    src/quicklist.c
     src/ae.c
     src/anet.c
-    src/dict.c
-    src/server.c
-    src/sds.c
-    src/zmalloc.c
-    src/lzf_c.c
-    src/lzf_d.c
-    src/pqsort.c
-    src/zipmap.c
-    src/sha1.c
-    src/ziplist.c
-    src/release.c
-    src/networking.c
-    src/util.c
-    src/object.c
-    src/db.c
-    src/replication.c
-    src/rdb.c
-    src/t_string.c
-    src/t_list.c
-    src/t_set.c
-    src/t_zset.c
-    src/t_hash.c
-    src/config.c
     src/aof.c
-    src/pubsub.c
-    src/multi.c
-    src/debug.c
-    src/sort.c
-    src/intset.c
-    src/syncio.c
-    src/cluster.c
-    src/crc16.c
-    src/endianconv.c
-    src/slowlog.c
-    src/scripting.c
     src/bio.c
-    src/rio.c
-    src/rand.c
-    src/memtest.c
-    src/crc64.c
     src/bitops.c
-    src/sentinel.c
-    src/notify.c
-    src/setproctitle.c
     src/blocked.c
-    src/hyperloglog.c
-    src/latency.c
-    src/sparkline.c
-    src/redis-check-rdb.c
-    src/redis-check-aof.c
-    src/geo.c
-    src/lazyfree.c
-    src/module.c
+    src/childinfo.c
+    src/cluster.c
+    src/config.c
+    src/crc16.c
+    src/crc64.c
+    src/db.c
+    src/debug.c
+    src/defrag.c
+    src/dict.c
+    src/endianconv.c
     src/evict.c
     src/expire.c
-    src/geohash.c
+    src/geo.c
     src/geohash_helper.c
-    src/childinfo.c
-    src/defrag.c
-    src/siphash.c
+    src/geohash.c
+    src/hyperloglog.c
+    src/intset.c
+    src/latency.c
+    src/lazyfree.c
+    src/lzf_c.c
+    src/lzf_d.c
+    src/memtest.c
+    src/module.c
+    src/multi.c
+    src/networking.c
+    src/notify.c
+    src/object.c
+    src/pqsort.c
+    src/pubsub.c
+    src/quicklist.c
+    src/rand.c
     src/rax.c
+    src/rdb.c
+    src/redis-check-aof.c
+    src/redis-check-rdb.c
+    src/release.c
+    src/replication.c
+    src/rio.c
+    src/scripting.c
+    src/sds.c
+    src/sentinel.c
+    src/server.c
+    src/setproctitle.c
+    src/sha1.c
+    src/siphash.c
+    src/slowlog.c
+    src/sort.c
+    src/sparkline.c
+    src/syncio.c
+    src/t_hash.c
+    src/t_list.c
+    src/t_set.c
+    src/t_string.c
+    src/t_zset.c
+    src/util.c
+    src/ziplist.c
+    src/zipmap.c
+    src/zmalloc.c
+)
+
+SET(CLIENT_SOURCES
+    src/crc64.c
+    src/ae.c
+    src/anet.c
+    src/adlist.c
+    src/release.c
+    src/zmalloc.c
+    src/redis-cli.c
 )
 
 IF(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/release.h")
@@ -92,6 +103,7 @@ ENDIF()
 FIND_PACKAGE(Threads REQUIRED)
 
 ADD_EXECUTABLE(redis-server ${SERVER_SOURCES})
+ADD_EXECUTABLE(redis-cli ${CLIENT_SOURCES})
 
 IF(MSVC)
     FIND_LIBRARY(PTHREAD_LIB
@@ -122,13 +134,25 @@ IF(MSVC)
         PRIVATE
             /std:c++98
     )
+
+    TARGET_LINK_LIBRARIES(redis-cli
+        PRIVATE
+            winmm
+            pthread
+    )
+    TARGET_COMPILE_DEFINITIONS(redis-cli
+        PRIVATE
+            /std:c++98
+    )
+
+ELSEIF(CYGWIN)
+ELSE()
 ENDIF()
 
 TARGET_COMPILE_OPTIONS(redis-server
     PRIVATE
         -std=c99 -pedantic
         -Wall -W -Wno-missing-field-initializers
-        -rdynamic
 )
 TARGET_COMPILE_DEFINITIONS(redis-server
     PRIVATE
@@ -145,4 +169,12 @@ TARGET_LINK_LIBRARIES(redis-server
         lua
         jemalloc
 )
+
+TARGET_LINK_LIBRARIES(redis-cli
+    PRIVATE
+        Threads::Threads
+        hiredis
+        linenoise
+)
+
 
