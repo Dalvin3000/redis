@@ -32,3 +32,5 @@ Makefile.dep
 \.vscode/
 
 build-nix/
+build-cygwin/
+build/
